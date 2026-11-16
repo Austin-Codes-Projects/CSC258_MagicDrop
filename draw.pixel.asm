@@ -26,11 +26,19 @@ sw $t6, 16($t0)          # paint shows yellow
 
 
 #HOW WE DRAW THE BOARD QUICKLY
+# infinite loop that fills board with white 
+
+add $t8, $t0 ,$zero    #copy $t0 into $t8
+addi $t9, $zero, 67
+
 target:     #start of loop
 sw $t7, 28($t0)          # paint shows yellow
 addi $t0, $t0, 4         #move $to to the next pixel location of memory
-
+addi $t9,$t9, -1         #decrement $t9 by 1
+beq $t9, $zero, end     #break out of loop
 j target                # jump to start of loop
 
+end:
+j end
 
 sw $t3, 128($t0)        # paint the first unit on the second row blue
