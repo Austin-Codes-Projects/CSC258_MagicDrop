@@ -1,4 +1,5 @@
 ##############################################################################
+# Austin Sunesh & Anita Navid
 # Example: Displaying Pixels
 #
 # This file demonstrates how to draw pixels with different colours to the
