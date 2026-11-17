@@ -39,6 +39,4 @@ beq $t9, $zero, end     #break out of loop
 j target                # jump to start of loop
 
 end:
-j end
-
 sw $t3, 128($t0)        # paint the first unit on the second row blue
