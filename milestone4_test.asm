@@ -29,6 +29,8 @@ hold_colour:     .word 0           # Colour currently held by the player (0 = no
 hold_count:      .word 0           # Number of bubbles being held
 last_row_time:   .word 0           # Time when the last row was added (ms)
 row_interval:    .word 5000        # Time between new rows in milliseconds (5 seconds)
+speed_increment: .word 250         # Reduce the row interval by 250 ms each time
+min_interval:    .word 1500        # Fastest allowed row advancement (1.5 seconds)
 game_over:       .word 0           # Flag indicating whether the game has ended
 score:           .word 0           # Player's score
 chain_depth:     .word 0           # Tracks consecutive matches for chain reactions
@@ -88,6 +90,20 @@ keyboard_loop:
     # Enough time has passed, so reset the timer and add a row
     sw      $a0, last_row_time
     jal     advance_rows
+
+    # Gradually speed up row advancement as the game progresses
+    lw      $t0, row_interval      # Current time between rows
+    lw      $t1, speed_increment   # Amount to decrease the interval by
+    subu    $t0, $t0, $t1
+
+    # Prevent the interval from dropping below the minimum speed limit
+    # 
+    lw      $t2, min_interval
+    bge     $t0, $t2, save_interval
+    move    $t0, $t2               # Enforce the minimum interval
+
+save_interval:
+    sw      $t0, row_interval      # Save the new interval for the next row
     jal     draw_scene
 
 poll_keyboard:
