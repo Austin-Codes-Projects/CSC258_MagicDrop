@@ -72,3 +72,25 @@ The first 35 cells contain random colour values (1–4), while the remaining 63 
 | D | Move right |
 | S | Grab same-coloured bubbles |
 | Q | Quit game |
+
+
+## Milestone 3
+
+- Throwing held bubbles using W
+- Removal of vertical matches of three or more same-coloured bubbles
+- Unmatched bubbles remain on the board
+- Game-over detection after throwing
+- Updated player colour to grey
+
+### Gameplay
+
+<table>
+  <tr>
+    <td align="center"><img src="screenshots/milestone3_start.png" width="350"><br>Starting board</td>
+    <td align="center"><img src="screenshots/milestone3_before_match.png" width="350"><br>Before matching</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="screenshots/milestone3_after_match.png" width="350"><br>After matching</td>    
+    <td align="center"><img src="screenshots/milestone3_no_match.png" width="350"><br>Throw without a match</td>
+  </tr>
+</table>
