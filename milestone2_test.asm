@@ -1,5 +1,5 @@
 
-# Magical Drop - Milestone 1 (with Milestone 2 movement preparation)
+# Magical Drop - Milestone 2
 #
 # We assert that the code submitted here is entirely our own creation,
 # and will indicate otherwise when it is not.
@@ -22,7 +22,7 @@ grid:            .space 392
 
 player_col:      .word 3            # Player starts in the middle column (0-6)
 
-# Variables reserved for gameplay features in later milestones
+# Gameplay variables (score and chain depth are for later milestones).
 hold_colour:     .word 0           # Colour currently held by the player (0 = none)
 hold_count:      .word 0           # Number of bubbles being held
 key_count:       .word 0           # Keypress counter used to advance the board
@@ -52,14 +52,18 @@ main:
     j       game_loop               # Start the game after the board is ready
 
 
-# Draw the scene once for Milestone 1 and keep the program running
-# This lets us inspect the bitmap and memory without constant redrawing
-# Keep checking for input so the player can respond to keypresses
+# Main loop: refresh the screen, check input and update the game
 game_loop:
-    #jal     advance_rows
-    jal     draw_scene          # Draw the current board and player
-
 keyboard_loop:
+    # Redraw the current game state even when no key is pressed
+    jal     draw_scene
+
+    # Pause for 16 milliseconds between frames to target roughly 60 FPS
+    li      $v0, 32
+    li      $a0, 16
+    syscall
+
+    # Check for keyboard input after refreshing the display
     jal     read_keyboard           # Get the pressed key's ASCII code in $v0
     beq     $v0, $zero, keyboard_loop  # Don't count when no key was pressed
 
@@ -118,8 +122,7 @@ move_right:
     j       keyboard_loop
     
 
-# Grab the bottommost bubble in the player's column, along with any
-# directly connected bubbles of the same colour above it.
+# Grab the lowest bubble in the column and any matching ones above it
 grab_bubble:
     lw      $t0, player_col     # $t0 stores the column the player is under
     li      $t1, 13             # $t1 starts at the bottom row of the grid
@@ -143,8 +146,7 @@ grab_search:
     j       grab_search
 
 grab_found:
-    # Check whether we're already holding bubbles of another colour.
-    # We only allow adding more bubbles if their colour matches.
+    # Can't grab a different colour while already holding bubbles
     lw      $t7, hold_colour
     beq     $t7, $zero, grab_start
     bne     $t7, $t6, grab_done
@@ -155,10 +157,8 @@ grab_start:
     lw      $t7, hold_count    # Load how many bubbles the player already holds
 
 grab_chain:
+    # Keep grabbing until we reach a different colour or an empty cell
     bltz    $t1, grab_finish   # Stop if we've moved above the top of the grid
-
-    # Continue upward while bubbles have the same colour.
-    # This lets one S press grab a whole vertical chain instead of one bubble.
     lw      $t6, 0($t5)
     bne     $t6, $t8, grab_finish
 
@@ -175,7 +175,7 @@ grab_finish:
 grab_done:
     j       keyboard_loop      # Return to checking keyboard input    
 
-# Exit the program when the player presses Q
+# Q exits the game
 quit_game:
     li      $v0, 10             # Load Immediate: syscall 10 = exit program
     syscall                     # Execute the exit syscall
@@ -463,7 +463,8 @@ draw_player:
     li      $s0, 0            # Count how many held bubbles we've drawn
 
 draw_held_loop:
-    # Stop when we've drawn them all or reached the display limit
+    # Display up to 11 held bubbles to stay within the bitmap boundaries
+    # This limits only the drawing, not the number of bubbles held
     lw      $t0, hold_count
     beq     $s0, $t0, player_done
     li      $t0, 11
@@ -482,7 +483,7 @@ draw_held_loop:
     j       draw_held_loop
 
 player_done:
-    # Restore the registers we saved before drawing the player
+    # Restore saved registers and return
     lw      $s1, 0($sp)        # Restore the original colour register
     lw      $s0, 4($sp)        # Restore the original counter register
     lw      $ra, 8($sp)        # Restore the return address
@@ -511,7 +512,7 @@ draw_scene:
     jal     draw_rect
     jal     draw_player             # Draw the player below the board
 
-    # Restore the return address and return to game_loop
+    # Restore the return address and return to the caller
     lw      $ra, 0($sp)
     addiu   $sp, $sp, 4
     jr      $ra
@@ -533,25 +534,6 @@ no_key:
     
 # Move all existing bubbles down by one row, then generate a new top row
 advance_rows:
-    # Check the bottom row before shifting anything down.
-    # Row 13 starts at cell 91 because 13 * 7 = 91.
-    la      $t0, grid
-    addiu   $t0, $t0, 364      # 91 cells * 4 bytes
-    li      $t1, 0             # Count the cells checked
-
-check_bottom_row:
-    li      $t2, 7
-    beq     $t1, $t2, bottom_clear
-
-    lw      $t3, 0($t0)        # Read the current bottom-row cell
-    bne     $t3, $zero, end_game
-
-    addiu   $t0, $t0, 4        # Move to the next cell
-    addiu   $t1, $t1, 1
-    j       check_bottom_row
-
-bottom_clear:
-    # Continue with the existing advance_rows code below
     # Save registers since we'll call random_colour inside this function
     addiu   $sp, $sp, -12
     sw      $ra, 8($sp)
@@ -564,8 +546,8 @@ bottom_clear:
 shift_rows:
     blt     $s1, 7, fill_top    # Stop shifting once we reach the first row
 
-    # Copy the bubble from one row above into the current cell
-    # There are 7 cells per row, so the source is 7 words earlier
+    # Work backwards so we don't overwrite bubbles before moving them.
+    # Each row is 28 bytes apart (7 cells * 4 bytes).
     sll     $t0, $s1, 2        # Current cell's byte offset = index * 4
     addu    $t1, $s0, $t0      # Address of the current cell
     lw      $t2, -28($t1)      # Read the cell one row above (7 * 4 = 28 bytes)
@@ -590,15 +572,33 @@ fill_top_loop:
     j       fill_top_loop
 
 advance_done:
-    # Restore saved registers and return
+    # Check the bottom row after advancing all bubbles
+    la      $t0, grid
+    addiu   $t0, $t0, 364      # Row 13 starts at cell 91 (91 * 4 bytes)
+    li      $t1, 0             # Number of bottom-row cells checked
+
+check_bottom_row:
+    li      $t2, 7
+    beq     $t1, $t2, bottom_clear
+
+    lw      $t3, 0($t0)
+    bne     $t3, $zero, end_game
+
+    addiu   $t0, $t0, 4        # Move to the next column
+    addiu   $t1, $t1, 1
+    j       check_bottom_row
+
+bottom_clear:
+    # Restore saved registers and return if the bottom row is empty
     lw      $s1, 0($sp)
     lw      $s0, 4($sp)
     lw      $ra, 8($sp)
     addiu   $sp, $sp, 12
     jr      $ra
     
-# End the game when advancing would push bubbles off the board
+# End the game as soon as a bubble reaches the bottom row.
 end_game:
+    jal draw_scene              # Display the final board before exiting
     li      $t0, 1
     sw      $t0, game_over     # Record that the game has ended
 

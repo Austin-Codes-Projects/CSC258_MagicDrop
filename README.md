@@ -39,3 +39,36 @@ The 7×14 grid is stored as 98 words (392 bytes), with each cell represented by 
 The first 35 cells contain random colour values (1–4), while the remaining 63 are empty (0).
 
 ![Memory Layout](screenshots/milestone1_memory.png)
+
+
+## Milestone 2
+
+- Player movement using A and D
+- Grabbing connected same-coloured bubbles using S
+- Holding multiple bubbles while moving
+- New row of random bubbles every 10 keypresses
+- Regular screen refreshing
+- Game over when bubbles reach the bottom row
+- Press Q to quit
+
+### Gameplay
+
+<table>
+  <tr>
+    <td align="center"><img src="screenshots/milestone2_start.png" width="350"><br>Starting board</td>
+    <td align="center"><img src="screenshots/milestone2_grabbing_feature.png" width="350"><br>Grabbing bubbles</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="screenshots/milestone2_row_advancement.png" width="350"><br>Row advancement</td>
+    <td align="center"><img src="screenshots/milestone2_game_over.png" width="350"><br>Game over</td>
+  </tr>
+</table>
+
+### Controls
+
+| Key | Action |
+|-----|--------|
+| A | Move left |
+| D | Move right |
+| S | Grab same-coloured bubbles |
+| Q | Quit game |
