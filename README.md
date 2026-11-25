@@ -89,3 +89,96 @@ The first 35 cells contain random colour values (1–4), while the remaining 63 
     <td align="center"><img src="screenshots/milestone3_no_match.png" width="350"><br>Throw without a match</td>
   </tr>
 </table>
+
+
+## Milestone 4 – Additional Game Features
+
+### E1 – Automatic Row Advancement
+
+- New rows are automatically generated based on elapsed time rather than the number of keypresses.
+- Existing bubbles shift down and a new randomly coloured row appears at the top.
+- The initial interval between rows is 5 seconds.
+
+### E2 – Increasing Speed
+
+- The time between new rows decreases by 250 milliseconds after each advancement.
+- The minimum interval is 1500 milliseconds.
+- The game becomes progressively more challenging as time passes.
+
+### H3 – Upward Gravity
+
+- Unsupported bubbles move upwards after matches are removed.
+- Gaps within columns are eliminated while preserving the original order of the remaining bubbles.
+
+### H4 – Validated Random Colour Generation
+
+- The starting board and newly generated rows cannot introduce vertical matches of three or more bubbles.
+- A randomly generated colour is rejected if it would complete a vertical match.
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="screenshots/milestone4_start.png" width="350"><br>
+      Starting board
+    </td>
+    <td align="center">
+      <img src="screenshots/milestone4_timer_row.png" width="350"><br>
+      Automatic row advancement
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="screenshots/milestone4_speed_start.png" width="350"><br>
+      Initial interval: 5000 ms (0x1388)
+    </td>
+    <td align="center">
+      <img src="screenshots/milestone4_speed_after.png" width="350"><br>
+      Reduced interval: 4250 ms (0x109a)
+    </td>
+  </tr>
+</table>
+
+## Milestone 5 – Flood Fill and Chain Reactions
+
+### H2 – Flood Fill
+
+- A vertical match of three or more bubbles triggers flood fill.
+- All horizontally or vertically connected bubbles of the same colour are removed.
+- Diagonal contact alone does not count as a connection.
+- Upward gravity fills the gaps left by removed bubbles.
+
+### H5 – Chain Reactions
+
+- Gravity can bring additional bubbles of the same colour together.
+- Newly formed vertical matches are automatically detected and removed.
+- Matching, flood fill and gravity repeat until the board is stable.
+- No additional player input is needed to trigger subsequent matches.
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="screenshots/milestone5_before_flood.png" width="350"><br>
+      Before flood fill
+    </td>
+    <td align="center">
+      <img src="screenshots/milestone5_after_flood.png" width="350"><br>
+      After flood fill and gravity
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="screenshots/milestone5_before_chain.png" width="350"><br>
+      Before chain reaction
+    </td>
+    <td align="center">
+      <img src="screenshots/milestone5_after_chain.png" width="350"><br>
+      After chain reaction
+    </td>
+  </tr>
+</table>
+
+## Final Implementation
+
+The final version is contained in `MagicalDrop.asm` and includes Milestones 1–5, with two additional easy features (E1, E2) and four hard features (H2, H3, H4, H5).
+
+All implemented gameplay features have been tested in Saturn.
