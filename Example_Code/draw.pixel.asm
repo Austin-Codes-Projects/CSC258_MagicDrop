@@ -23,20 +23,20 @@ sw $t2, 4($t0)          # paint second unit on the first row green
 sw $t4, 8($t0)          # paint shows magenta
 sw $t5, 12($t0)          # paint shows blue
 sw $t6, 16($t0)          # paint shows yellow
+sw $t3, 128($t0)        # paint the first unit on the second row blue
 
 
 #HOW WE DRAW THE BOARD QUICKLY
 # infinite loop that fills board with white 
 
 add $t8, $t0 ,$zero    #copy $t0 into $t8
-addi $t9, $zero, 67
+addi $t9, $zero, 5
 
 target:     #start of loop
-sw $t7, 28($t0)          # paint shows yellow
-addi $t0, $t0, 4         #move $to to the next pixel location of memory
+sw $t7, 256($t8)          # paint shows yellow
+addi $t8, $t8, 4         #move $to to the next pixel location of memory
 addi $t9,$t9, -1         #decrement $t9 by 1
 beq $t9, $zero, end     #break out of loop
 j target                # jump to start of loop
 
 end:
-sw $t3, 128($t0)        # paint the first unit on the second row blue

@@ -1,45 +1,55 @@
-
-# Magical Drop - Milestone 4
-#   Goals: e1, e2, e3, h3
-#   Milestone 5 initial plan: e4, h5
+################# CSC258 Assembly Final Project ###################
+# This file contains our implementation of Magical Drop.
 #
-# We assert that the code submitted here is entirely our own creation,
-# and will indicate otherwise when it is not.
+# Student 1: Austin Sunesh, 1011054001
+# Student 2: 
 #
-# Bitmap Display Configuration
+# We assert that the code submitted here is entirely our own 
+# creation, and will indicate otherwise when it is not.
+#
+######################## Bitmap Display Configuration ########################
 # - Unit width in pixels:       8
 # - Unit height in pixels:      8
 # - Display width in pixels:    256
 # - Display height in pixels:   256
-# - Base Address for Display:   0x10008000
+# - Base Address for Display:   0x10008000 ($gp)sd
+##############################################################################
+    .data
 
-.data
+##############################################################################
+# Immutable Data
+##############################################################################
+# The address of the bitmap display. Don't forget to connect it!
 
 # Memory-mapped addresses for the bitmap display and keyboard input
-ADDR_DSPL:       .word 0x10008000
-ADDR_KBRD:       .word 0xffff0000
+ADDR_DSPL: .word 0x10008000
+ADDR_KBRD: .word 0xffff0000
 
 # 7 columns x 14 rows = 98 cells, each stored as a 4-byte word
-grid:            .space 392
-
-player_col:      .word 3            # Player starts in the middle column (0-6)
+grid: .space 392
+mark: .space 392
+player_col: .word 3            # Player starts in the middle column (0-6)
 
 # Gameplay variables (score and chain depth are for later milestones).
-hold_colour:     .word 0           # Colour currently held by the player (0 = none)
-hold_count:      .word 0           # Number of bubbles being held
-last_row_time:   .word 0           # Time when the last row was added (ms)
-row_interval:    .word 5000        # Time between new rows in milliseconds (5 seconds)
+hold_colour: .word 0           # Colour currently held by the player (0 = none)
+hold_count: .word 0           # Number of bubbles being held
+last_row_time: .word 0           # Time when the last row was added (ms)
+row_interval: .word 5000        # Time between new rows in milliseconds (5 seconds)
 speed_increment: .word 250         # Reduce the row interval by 250 ms each time
-min_interval:    .word 1500        # Fastest allowed row advancement (1.5 seconds)
-game_over:       .word 0           # Flag indicating whether the game has ended
-score:           .word 0           # Player's score
-chain_depth:     .word 0           # Tracks consecutive matches for chain reactions
+min_interval: .word 1500        # Fastest allowed row advancement (1.5 seconds)
+game_over: .word 0           # Flag indicating whether the game has ended
+score: .word 0           # Player's score
+chain_depth: .word 0           # Tracks consecutive matches for chain reactions
+
+
+key_count: .word 0  # How we will push each layer, after 10 moves the layer will automatically move
+
 
 # Each grid cell stores a colour index rather than the full RGB value
 # 0 = empty, 1 = red, 2 = green, 3 = blue, 4 = yellow
-colours:         .word 0x000000, 0xff0000, 0x00ff00, 0x0000ff, 0xffff00
+colours: .word 0x000000, 0xff0000, 0x00ff00, 0x0000ff, 0xffff00
 
-lcg_seed:        .word 0           # Current seed for the random colour generator
+lcg_seed: .word 0           # Current seed for the random colour generator
 
 
 .text
@@ -49,68 +59,89 @@ main:
 
     # Use the current system time as our random seed so each restart
     # generates a different arrangement of bubbles
-    li      $v0, 30
+    li $v0, 30
     syscall
-    sw      $a0, lcg_seed           # Save the time value returned in $a0
+    sw $a0, lcg_seed           # Save the time value returned in $a0
 
-    jal     init_grid               # Initialize all 98 grid cells
+    jal init_grid               # Initialize all 98 grid cells
 
+    
+    
     # Start the timer once the board is ready.
     # Syscall 30 returns the lower 32 bits of system time in $a0.
-    li      $v0, 30
+    li $v0, 30
     syscall
-    sw      $a0, last_row_time
+    sw $a0, last_row_time
 
-    j       game_loop               # Start the game after the board is ready
+    j game_loop               # Start the game after the board is ready
 
 
 # Main loop: refresh the screen, check input and update the game
 # Main loop: refresh the screen, check the timer and handle input
 game_loop:
 keyboard_loop:
-    jal     draw_scene
+    jal draw_scene
 
     # Wait 16 ms between frames to target roughly 60 FPS
-    li      $v0, 32         # Sleep
-    li      $a0, 16         # Duration
+    li $v0, 32         # Sleep
+    li $a0, 16         # Duration
     syscall
 
     # Get the current system time
-    li      $v0, 30         # System time
+    li $v0, 30         # System time
     syscall
 
     # Calculate how much time has passed since the last new row
-    lw      $t0, last_row_time
-    subu    $t1, $a0, $t0       # Current time - last row time
-    lw      $t2, row_interval   # Required time between rows
+    lw $t0, last_row_time
+    subu $t1, $a0, $t0       # Current time - last row time
+    lw $t2, row_interval   # Required time between rows
 
     # If not enough time has passed, continue to keyboard input
-    bltu    $t1, $t2, poll_keyboard     # Branch if less than - unsigned
+    bltu $t1, $t2, poll_keyboard     # Branch if less than - unsigned
 
     # Enough time has passed, so reset the timer and add a row
-    sw      $a0, last_row_time
-    jal     advance_rows
-
+    sw $a0, last_row_time
+    jal advance_rows
+    
+    sw $zero, key_count
     # Gradually speed up row advancement as the game progresses
-    lw      $t0, row_interval      # Current time between rows
-    lw      $t1, speed_increment   # Amount to decrease the interval by
-    subu    $t0, $t0, $t1
+    lw $t0, row_interval      # Current time between rows
+    lw $t1, speed_increment   # Amount to decrease the interval by
+    subu $t0, $t0, $t1
 
     # Prevent the interval from dropping below the minimum speed limit
     # 
-    lw      $t2, min_interval
-    bge     $t0, $t2, save_interval
-    move    $t0, $t2               # Enforce the minimum interval
+    lw $t2, min_interval
+    bge $t0, $t2, save_interval
+    move $t0, $t2               # Enforce the minimum interval
 
 save_interval:
-    sw      $t0, row_interval      # Save the new interval for the next row
-    jal     draw_scene
+    sw $t0, row_interval      # Save the new interval for the next row
+    jal draw_scene
 
 poll_keyboard:
-    jal     read_keyboard       # Returns the pressed key in $v0
-    beq     $v0, $zero, keyboard_loop
+    jal read_keyboard       # Returns the pressed key in $v0
+    beq $v0, $zero, keyboard_loop
 
 check_keys:
+    
+    lw  $t0, key_count  # loading the counter variable into #t0
+    
+    addiu $t0, $t0, 1  # Incrementing unsigned
+    sw $t0, key_count
+    
+    li $t1, 10 # the allowed number of moves before the layer is pushed
+    blt $t0, $t1, dispatch_key      #if $t0 is less than $t1, so less then the 
+    
+    sw $zero, key_count # on the 10th input, counter is reset and row is pushed
+    move $s7, $v0       # advance_rows effects $v0, so we save the key
+    jal advance_rows
+    move $v0, $s7
+    
+    
+    
+
+dispatch_key:
     li      $t0, 97                 # ASCII 97 = 'a'
     beq     $v0, $t0, move_left
 
@@ -127,6 +158,8 @@ check_keys:
     beq     $v0, $t0, quit_game     # Exit when Q is pressed
     
     j       keyboard_loop           # Ignore other keys for now
+    
+    
 
 move_left:
     lw      $t0, player_col         # Get the player's current column
@@ -267,8 +300,10 @@ throw_done:
     sw      $zero, hold_count
     sw      $zero, hold_colour
 
-    jal     check_matches
-
+    
+    
+    jal set_board # DCFix: matching and gravity combined, repeating until stable
+    
     # Check for game over AFTER removing matches, since a successful
     # match could clear bubbles that reached the bottom row.
     la      $t0, grid
@@ -429,11 +464,35 @@ init_grid_loop:
     # Check whether the current cell is part of the first five rows
     slti    $t0, $s1, 35            # Set $t0 to 1 if the index is below 35
     beq     $t0, $zero, init_grid_empty # Otherwise, store 0 for an empty cell
-
+    
+    
+    
+    
+    
+    
+    #new testing 
+    
+    init_pick:
     jal     random_colour           # Get a random colour index in $v0
-    sw      $v0, 0($s0)             # Store the colour index in the current cell
+    slti    $t0, $s1, 14            # first two rows can't form a run
+    bne     $t0, $zero, init_store
+    lw      $t1, -28($s0)           # cell one row above
+    lw      $t2, -56($s0)           # cell two rows above
+    bne     $t1, $t2, init_store    # they differ, so no run is possible
+    beq     $v0, $t1, init_pick     # new colour would complete a run, so re-roll
+    init_store:
+    sw      $v0, 0($s0)
 
-    j       init_grid_next          # Skip the empty-cell case
+    j       init_grid_next
+    
+    
+    
+    
+    
+    # jal     random_colour           # Get a random colour index in $v0
+    # sw      $v0, 0($s0)             # Store the colour index in the current cell
+
+    # j       init_grid_next          # Skip the empty-cell case
 
 init_grid_empty:
 
@@ -570,8 +629,8 @@ draw_player:
     beq     $t0, $zero, player_done
 
     # Convert the held colour index into its RGB value
-    lw      $t0, hold_colour
-    la      $t1, colours
+    lw $t0, hold_colour
+    la $t1, colours
     sll     $t0, $t0, 2
     addu    $t1, $t1, $t0
     lw      $s1, 0($t1)       # Keep the colour safe across draw_rect calls
@@ -675,19 +734,56 @@ shift_rows:
 fill_top:
     li      $s1, 0             # Begin filling the new top row
 
+# fill_top_loop:
+    # beq     $s1, 7, advance_done
+
+    # jal     random_colour      # Generate a colour index from 1 to 4
+
+    # sll     $t0, $s1, 2        # Find the current top-row cell's byte offset
+    # addu    $t1, $s0, $t0
+    # sw      $v0, 0($t1)        # Store the newly generated colour
+
+    # addiu   $s1, $s1, 1
+    # j       fill_top_loop
+
+#testing 
 fill_top_loop:
     beq     $s1, 7, advance_done
 
-    jal     random_colour      # Generate a colour index from 1 to 4
+fill_pick:
+    jal     random_colour
 
-    sll     $t0, $s1, 2        # Find the current top-row cell's byte offset
+    sll     $t0, $s1, 2            # offset of this column in row 0
     addu    $t1, $s0, $t0
-    sw      $v0, 0($t1)        # Store the newly generated colour
+    lw      $t2, 28($t1)           # row 1 of this column (old row 0)
+    lw      $t3, 56($t1)           # row 2 of this column (old row 1)
+    bne     $t2, $t3, fill_store   # they differ, so no run is possible
+    beq     $v0, $t2, fill_pick    # new colour would complete a run, so re-roll
+
+fill_store:
+    sw      $v0, 0($t1)
 
     addiu   $s1, $s1, 1
     j       fill_top_loop
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 advance_done:
+   
     # Check the bottom row after advancing all bubbles
     la      $t0, grid
     addiu   $t0, $t0, 364      # Row 13 starts at cell 91 (91 * 4 bytes)
@@ -726,9 +822,160 @@ end_game:
 # Scan each column from top to bottom and remove sequences of
 # three or more consecutive bubbles of the same colour.
 # Bubbles outside these sequences are left in their original positions.
+
+
+# check_matches:
+    # li $v0, 0 # DCFix: used to fix random disappering col, begin with assuming nothing was cleared 
+    
+    # la      $t0, grid           # Base address of the grid
+    # li      $t1, 0              # Current column (0-6)
+
+
+# Vertical run triggers, flood fill spreads, then everything marked is cleared.
+# Returns $v0 = 1 if anything was cleared.
 check_matches:
-    la      $t0, grid           # Base address of the grid
-    li      $t1, 0              # Current column (0-6)
+    addiu   $sp, $sp, -4
+    sw      $ra, 0($sp)
+    jal     mark_runs
+    jal     expand_marks
+    jal     clear_marked
+    lw      $ra, 0($sp)
+    addiu   $sp, $sp, 4
+    jr      $ra
+
+# Pass 1: mark every cell that is part of a vertical run of 3 or more
+mark_runs:
+    la      $t0, grid
+    li      $t1, 0                  # column
+mr_col:
+    li      $t2, 0                  # row
+    li      $t3, 0                  # colour of current sequence
+    li      $t4, 0                  # length of current sequence
+mr_row:
+    li      $t5, 14
+    beq     $t2, $t5, mr_next_col
+    li      $t5, 7
+    mul     $t6, $t2, $t5
+    addu    $t6, $t6, $t1
+    sll     $t6, $t6, 2
+    addu    $t7, $t0, $t6           # address of this cell
+    lw      $t8, 0($t7)
+    beq     $t8, $zero, mr_empty
+    bne     $t8, $t3, mr_new
+    addiu   $t4, $t4, 1
+    li      $t5, 3
+    blt     $t4, $t5, mr_next_row
+    bgt     $t4, $t5, mr_extra
+    li      $t5, 1                  # exactly 3: mark this cell and the two above
+    sw      $t5, 392($t7)
+    sw      $t5, 364($t7)           # 392 - 28
+    sw      $t5, 336($t7)           # 392 - 56
+    j       mr_next_row
+mr_extra:
+    li      $t5, 1                  # 4th, 5th... bubble of the same run
+    sw      $t5, 392($t7)
+    j       mr_next_row
+mr_new:
+    move    $t3, $t8
+    li      $t4, 1
+    j       mr_next_row
+mr_empty:
+    li      $t3, 0
+    li      $t4, 0
+mr_next_row:
+    addiu   $t2, $t2, 1
+    j       mr_row
+mr_next_col:
+    addiu   $t1, $t1, 1
+    li      $t5, 7
+    blt     $t1, $t5, mr_col
+    jr      $ra
+
+# Pass 2: spread marks to same-colour neighbours until nothing changes
+expand_marks:
+exp_sweep:
+    li      $v0, 0                  # "something changed" flag
+    la      $t0, grid
+    li      $t1, 0                  # row
+exp_row:
+    li      $t2, 14
+    beq     $t1, $t2, exp_end
+    li      $t2, 0                  # column
+exp_col:
+    li      $t3, 7
+    beq     $t2, $t3, exp_next_row
+    mul     $t4, $t1, $t3
+    addu    $t4, $t4, $t2
+    sll     $t4, $t4, 2
+    addu    $t4, $t0, $t4           # address of this cell
+    lw      $t5, 0($t4)             # its colour
+    beq     $t5, $zero, exp_next_col
+    lw      $t6, 392($t4)
+    bne     $t6, $zero, exp_next_col    # already marked
+
+    beq     $t1, $zero, exp_down    # up neighbour
+    lw      $t6, -28($t4)
+    bne     $t6, $t5, exp_down
+    lw      $t6, 364($t4)
+    bne     $t6, $zero, exp_mark
+exp_down:
+    li      $t6, 13
+    beq     $t1, $t6, exp_left      # down neighbour
+    lw      $t6, 28($t4)
+    bne     $t6, $t5, exp_left
+    lw      $t6, 420($t4)           # 392 + 28
+    bne     $t6, $zero, exp_mark
+exp_left:
+    beq     $t2, $zero, exp_right   # left neighbour
+    lw      $t6, -4($t4)
+    bne     $t6, $t5, exp_right
+    lw      $t6, 388($t4)           # 392 - 4
+    bne     $t6, $zero, exp_mark
+exp_right:
+    li      $t6, 6
+    beq     $t2, $t6, exp_next_col  # right neighbour
+    lw      $t6, 4($t4)
+    bne     $t6, $t5, exp_next_col
+    lw      $t6, 396($t4)           # 392 + 4
+    beq     $t6, $zero, exp_next_col
+exp_mark:
+    li      $t6, 1
+    sw      $t6, 392($t4)
+    li      $v0, 1
+exp_next_col:
+    addiu   $t2, $t2, 1
+    j       exp_col
+exp_next_row:
+    addiu   $t1, $t1, 1
+    j       exp_row
+exp_end:
+    bne     $v0, $zero, exp_sweep   # repeat until a full sweep marks nothing
+    jr      $ra
+
+# Pass 3: clear every marked cell and reset the marks
+clear_marked:
+    la      $t0, grid
+    li      $t1, 0
+    li      $t2, 98
+    li      $v0, 0
+cl_loop:
+    beq     $t1, $t2, cl_done
+    lw      $t3, 392($t0)
+    beq     $t3, $zero, cl_next
+    sw      $zero, 0($t0)
+    sw      $zero, 392($t0)
+    li      $v0, 1
+cl_next:
+    addiu   $t0, $t0, 4
+    addiu   $t1, $t1, 1
+    j       cl_loop
+cl_done:
+    jr      $ra
+
+
+
+
+
 
 match_column:
     # Reset the sequence whenever we start checking a new column
@@ -771,6 +1018,9 @@ match_row:
     sw      $zero, 0($t7)       # Third bubble
     sw      $zero, -28($t7)     # Second bubble
     sw      $zero, -56($t7)     # First bubble
+    
+    li $v0, 1 # DCFix: register is updated since something was cleared
+    
     j       match_next_row
 
 match_clear_extra:
@@ -801,3 +1051,72 @@ match_next_column:
     blt     $t1, $t5, match_column
 
     jr      $ra                 # All seven columns have been checked
+    
+    
+    
+    
+    
+    
+
+# Milestone 4 (Hard 3)
+
+apply_grav:
+    la $t0, grid 
+    li $t1, 0       # this is the current column
+
+grav_col:
+    li $t2, 0       # reading row, looks at every cell from row 0 to 13, checking if it holds bubble
+    li $t3, 0       # writing row, writes the next free row , the bubble should land
+    
+    
+grav_row:
+    li $t4, 14
+    beq $t2, $t4, grav_nxt_col  # checks if reading row is 14, basically stopping at the bottom of the board 
+    
+    li $t4, 7                   # number of cells per row
+    mul $t5, $t2, $t4           # address of grid[read row][col], which is the first cell in the row
+    addu $t5, $t5, $t1          # getting cell index by adding the col
+    sll $t5, $t5, 2             # converting the index into a byte offset
+    addu $t5, $t0, $t5          # Now $t5 is pointing at the cell, which is the grid base address.
+
+    lw $t6, 0($t5)              # we load the colour of $t5, to check if there is a bubble
+    beq $t6, $zero, grav_skip   # zero means no bubble, so we skip gravity effect
+
+    sw $zero, 0($t5)           # clear the old position, before we write the new position
+    mul $t7, $t3, $t4           # No we are finding the address of the destination.
+    addu $t7, $t7, $t1
+    sll $t7, $t7, 2
+    addu $t7, $t0, $t7
+    sw $t6, 0($t7)             # place the bubble in this new spot
+    addiu $t3, $t3, 1          # then move on
+
+
+grav_skip:
+    addiu $t2, $t2, 1   # moving the read row without doing anything
+    j grav_row          
+    
+grav_nxt_col:   # when read tow hits 14
+    addiu $t1, $t1, 1   # moves to next col, if col< 7, jumps back to grav_col
+    li $t4, 7
+    blt $t1, $t4, grav_col
+    jr $ra          # when col is 7 it goes back to caller
+    
+    
+# DCFix: The helpers that will prevent unwanted col disapperance 
+# Repeat match and gravity until nothing is removed
+
+set_board:
+    addiu $sp, $sp, -4  #making room for one work on the stack pointer
+    sw $ra, 0($sp)      # saving the return address since we will be calling a few functions
+
+set_loop:   
+    jal check_matches           # $v0 = 1 if anything was cleared
+    move $t9, $v0                # keep the flag; apply_grav never touches $t9
+    jal apply_grav              # close any gaps the clear left
+    bne $t9, $zero, set_loop # something was cleared, so look again
+
+    lw  $ra, 0($sp)
+    addiu $sp, $sp, 4
+    jr  $ra
+    
+

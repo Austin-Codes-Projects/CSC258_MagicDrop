@@ -58,6 +58,7 @@ main:
 game_loop:
     jal     draw_scene
 
+# Waiting in memory closed loop will change in M2
 memory_wait:
     j       memory_wait             # Stay here instead of continuously redrawing the same scene
 
@@ -66,7 +67,7 @@ memory_wait:
 # Inputs: $a0 = x, $a1 = y, $a2 = width, $a3 = height, $v1 = colour
 draw_rect:
 
-    lw      $t0, ADDR_DSPL          # $t0 holds the display's base memory address
+    lw      $t0, ADDR_DSPL          # $t0 holds the starting bitmap display, base memory address
 
     # Copy the arguments into temporary registers so the rectangle's
     # position, size, and colour are available throughout both loops
@@ -80,7 +81,7 @@ draw_rect:
 
 draw_rect_row:
 
-    beq     $t6, $t4, draw_rect_done # Stop once we've reached the requested height
+    beq     $t6, $t4, draw_rect_done # Stop once we've reached the requested height/ Checking if all rows are drawn 
 
     li      $t7, 0                  # Reset the column counter for each new row
 
