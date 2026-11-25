@@ -288,7 +288,7 @@ draw_bubbles_done:
     jr $ra
 
 
-# Draw the player below the board as a white head and green body
+# Draw the player below the board as a white head and grey body
 # The sprite is fixed at the centre for this Milestone 1 version
 draw_player:
     # Save $ra since draw_rect will be called twice
@@ -303,13 +303,13 @@ draw_player:
     li $v1, 0xffffff
     jal draw_rect
 
-    # Draw the green body starting one unit below the head
+    # Draw the grey body starting one unit below the head
     # It uses the same x coordinate so the two rectangles line up
     li $a0, 7
     li $a1, 19
     li $a2, 1
     li $a3, 2
-    li $v1, 0x00ff00
+    li $v1, 0xc0c0c0
     jal draw_rect
 
     # Restore the return address so we can return to draw_scene

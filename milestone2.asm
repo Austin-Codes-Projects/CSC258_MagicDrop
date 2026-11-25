@@ -402,7 +402,7 @@ draw_bubbles_done:
     jr $ra
 
 
-# Draw the player below the field using a white head and green body
+# Draw the player below the field using a white head and grey body
 # Both parts use player_col so they stay aligned when the player moves
 draw_player:
     # Save the return address and registers used for drawing the held stack
@@ -421,13 +421,13 @@ draw_player:
     li $v1, 0xffffff
     jal draw_rect
 
-    # Draw the green body directly beneath the head
+    # Draw the grey body directly beneath the head
     lw $t0, player_col
     addiu $a0, $t0, 4
     li $a1, 19
     li $a2, 1
     li $a3, 2
-    li $v1, 0x00ff00
+    li $v1, 0xc0c0c0
     jal draw_rect
 
     # Check how many bubbles are currently held

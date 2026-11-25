@@ -19,10 +19,6 @@ Each time the program runs, the starting bubbles are randomly generated using fo
     <td><img src="screenshots/milestone1_demo1.png" width="350"></td>
     <td><img src="screenshots/milestone1_demo2.png" width="350"></td>
   </tr>
-  <tr>
-    <td><img src="screenshots/milestone1_demo3.png" width="350"></td>
-    <td><img src="screenshots/milestone1_demo4.png" width="350"></td>
-  </tr>
 </table>
 
 
@@ -80,7 +76,6 @@ The first 35 cells contain random colour values (1–4), while the remaining 63 
 - Removal of vertical matches of three or more same-coloured bubbles
 - Unmatched bubbles remain on the board
 - Game-over detection after throwing
-- Updated player colour to grey
 
 ### Gameplay
 
